@@ -13,7 +13,7 @@ git submodule update --init --recursive
 To update the submodules, pull them.
 
 ```bash
-cd src/ufo_c && git pull origin events && cd ../.. 
+cd src/ufo_c && git pull origin events && cargo update && cd ../.. 
 ```
 
 Then build all packages:
@@ -28,7 +28,7 @@ make
 thread '<unnamed>' panicked at 'called `Result::unwrap()` on an `Err` value: SystemError(Sys(EPERM))', .../src/ufo_core.rs:215:14
 ```
 
-System is set up only to allow root use `userfaultf`. Fix by setting system
+System is set up only to allow root use `userfaultfd`. Fix by setting system
 priivileges to allow unprivileged users to use `userfaultfd`:
 
 ```bash

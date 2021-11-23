@@ -139,20 +139,15 @@ void callback(void* raw_data, const UfoEventandTimestamp* info) {
             data->current.memory_usage = info->event.allocate_ufo.header_size_with_padding;
             data->current.intended_memory_usage += info->event.allocate_ufo.intended_header_size;
             data->current.intended_memory_usage += info->event.allocate_ufo.intended_body_size;
-            data->current.apparent_memory_usage += info->event.allocate_ufo.total_size_with_padding;
-
-            // if (!data->zeroed) {
-            //     data->zero = info->timestamp_nanos;
-            //     data->zeroed = true;
-            // }            
+            data->current.apparent_memory_usage += info->event.allocate_ufo.total_size_with_padding;         
         break;
         case FreeUfo:
             data->current.event_type = 'F'; // ree UFO
             data->current.ufos--;                        
-            data->current.materialized_chunks -= info->event.free_ufo.chunks_freed;
+            //data->current.materialized_chunks -= info->event.free_ufo.chunks_freed;
             data->current.memory_usage -= info->event.allocate_ufo.header_size_with_padding;
-            data->current.memory_usage -= info->event.free_ufo.memory_freed;
-            data->current.disk_usage -= info->event.free_ufo.disk_freed;
+            //data->current.memory_usage -= info->event.free_ufo.memory_freed;
+            //data->current.disk_usage -= info->event.free_ufo.disk_freed;
             data->current.intended_memory_usage -= info->event.free_ufo.intended_header_size;
             data->current.intended_memory_usage -= info->event.free_ufo.intended_body_size;
             data->current.apparent_memory_usage -= info->event.free_ufo.total_size_with_padding;
@@ -174,7 +169,7 @@ void callback(void* raw_data, const UfoEventandTimestamp* info) {
             data->current.event_type = 'R'; // eset UFO
             data->current.disk_usage -= info->event.ufo_reset.disk_freed;
             data->current.memory_usage -= info->event.ufo_reset.memory_freed;
-            data->current.materialized_chunks = info->event.ufo_reset.chunks_freed;
+            data->current.materialized_chunks -= info->event.ufo_reset.chunks_freed;
         break;
         case GcCycleStart:
             data->current.event_type = 'S'; // tart GC
@@ -190,6 +185,9 @@ void callback(void* raw_data, const UfoEventandTimestamp* info) {
             data->current.event_type = '+';
             // Ignore
         break;
+        default:
+            fprintf(stderr, "Unknown case in event handler %i.\n", info->event.tag);
+            exit(2);
     }
 
     // Copy the contents of data->current into data->history as the most recent event
@@ -369,7 +367,6 @@ int main(int argc, char **argv) {
     ufo_core_shutdown(ufo_system);
 
     sleep(5);
-    callback_data_to_csv(data);   
 
     // Report events.
     INFO("Recorded %li events\n", data->events);

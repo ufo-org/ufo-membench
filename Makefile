@@ -47,8 +47,8 @@ libs: ufo-c $(OBJECTS)
 membench: libs
 	$(CC) $(CFLAGS) $(INCLUDES) -o membench $(OBJECTS) $(LFLAGS) $(LIBS)
 
-clean: ufo-c-clean new-york-clean
-	$(RM) src/*.o *~ $(MAIN) bench seq fib bzip postgres 
+clean: ufo-c-clean 
+	$(RM) src/*.o *~ membench 
 
 ufo-c:
 	cargo $(CARGOFLAGS) --manifest-path=$(UFO_C_PATH)/Cargo.toml

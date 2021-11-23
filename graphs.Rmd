@@ -30,7 +30,7 @@ Run the benchmark with parameters:
   - `low-water-mark` Once GC starts, it removes chunks until this much memory is left (in bytes),
 
 ``` {bash}
-./membench --size=$((10*1000*1000)) --writes=100 --min-load=$((1024 * 1024 / 8)) --high-water-mark=$((10 * 1024 * 1024)) --low-water-mark=$((1 * 1024 * 1024))
+./membench --size=$((10*1000*1000)) --writes=0 --min-load=$((1024 * 1024 / 8)) --high-water-mark=$((10 * 1024 * 1024)) --low-water-mark=$((1 * 1024 * 1024))
 ```
 
 ### Memory and disk usage graph

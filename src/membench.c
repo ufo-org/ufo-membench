@@ -354,12 +354,12 @@ int main(int argc, char **argv) {
     size_t last_write = 0;
     size_t n = config.ufos * (config.sample_size == 0 ? config.size : config.sample_size);  
     for (size_t i = 0; i < n; i++) {
-        if (config.writes != 0 && i == last_write + config.writes) {
+        if ((config.writes != 0) && (i == last_write + config.writes)) {
             ufo[i] = 42;
+            last_write = i;
         } else {
             sum += ufo[i];
-        }
-        last_write++;
+        }        
     }
 
     INFO("Freeing %li UFOs\n", config.ufos);

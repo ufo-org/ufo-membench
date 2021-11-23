@@ -15,6 +15,11 @@
 #define MB (1024UL * 1024UL)
 #define KB (1024UL)
 
+bool file_exists (const char *filename) {
+  struct stat buffer;   
+  return (stat (filename, &buffer) == 0);
+}
+
 typedef struct {
     char *csv_file;
     size_t ufos;
@@ -51,7 +56,7 @@ static error_t parse_opt (int key, char *value, struct argp_state *state) {
 
 typedef struct {
     char event_type;
-    uint64_t timestamp;
+    uint64_t timestamp; // nannos
 
     // How many UFOs are in use.
     uint64_t ufos;
@@ -78,12 +83,44 @@ typedef struct {
 
 typedef struct {
     const char *csv_file;
-    // bool zeroed;
-    // uint64_t zero;
     uint64_t events;
     Event current;
     Event history[MAX_HISTORY];
 } CallbackData;
+
+void callback_data_to_csv(CallbackData *data) {
+    FILE *output_stream;
+    if (!file_exists(data->csv_file)) {
+        output_stream = fopen(data->csv_file, "w");
+        fprintf(output_stream,                
+               "event,"
+               "timestamp,"
+               "ufos,"
+               "materialized_chunks,"
+               "intended_memory_usage,"
+               "apparent_memory_usage,"
+               "memory_usage,"
+               "disk_usage\n");
+    } else {
+        output_stream = fopen(data->csv_file, "a");
+    }
+
+
+    for (size_t i = 0; i < data->events; i++) {
+        fprintf(output_stream, 
+            "%c,%li,%li,%li,%li,%li,%li,%li\n",
+            data->history[i].event_type,
+            data->history[i].timestamp,
+            data->history[i].ufos,
+            data->history[i].materialized_chunks,
+            data->history[i].intended_memory_usage,
+            data->history[i].apparent_memory_usage,
+            data->history[i].memory_usage,
+            data->history[i].disk_usage);
+    }
+
+    fclose(output_stream);
+}
 
 void callback(void* raw_data, const UfoEventandTimestamp* info) {
 
@@ -321,6 +358,9 @@ int main(int argc, char **argv) {
         // }
     }
 
+    sleep(3);
+    callback_data_to_csv(data);   
+
     INFO("Freeing %li UFOs\n", config.ufos);
     // for (size_t i = 0; i < config.ufos; i++) {
     //     seq_free(&ufo_system, ufos[i]);
@@ -333,7 +373,8 @@ int main(int argc, char **argv) {
 
     // Report events.
     INFO("Recorded %li events\n", data->events);
-    INFO("sum: %li\n", sum);
+    INFO("Sum: %li\n", sum);
+    callback_data_to_csv(data);   
 
     free(data);
 

@@ -66,8 +66,8 @@ data <- read_csv("membench.csv")
 
 ```{r fig.width=20, fig.height=10}
 ggplot(data, aes(x=timestamp)) + 
-  geom_area(aes(y=memory_usage), fill="#4A5899", alpha=0.4) +
-  geom_line(aes(y=intended_memory_usage), color="#92374D", size=2) +
+  geom_area(aes(y=memory_usage), fill="#559CAD", alpha=0.4) +
+  geom_line(aes(y=intended_memory_usage), color="#4A5899", size=2) +
   theme_linedraw() + 
   scale_y_continuous(breaks=MB(25*(0:3)), labels = function(x) humanReadable(x, standard = "IEC", sep = "")) +
   scale_x_continuous(labels = function(x) paste0(floor(x / 1000 / 1000), "ms")) +

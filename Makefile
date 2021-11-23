@@ -19,7 +19,7 @@ endif
 
 UFO_LIBS=$(UFO_C_PATH)/$(LIB_SUBDIR)/libufo_c.a
 UFO_INCLUDES=-I$(UFO_C_PATH)/target/
-COMMON_LIBS = -Wl,--no-as-needed -lpthread -lpq -lrt -ldl -lm -lbz2 -lstdc++
+COMMON_LIBS = -Wl,--no-as-needed -lpthread -lrt -ldl -lm -lstdc++
 LIBS = $(COMMON_LIBS) $(UFO_LIBS)
 COMMON_FLAGS = -fPIC -Wall -Werror $(UFO_INCLUDES)
 

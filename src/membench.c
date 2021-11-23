@@ -144,10 +144,10 @@ void callback(void* raw_data, const UfoEventandTimestamp* info) {
         case FreeUfo:
             data->current.event_type = 'F'; // ree UFO
             data->current.ufos--;                        
-            //data->current.materialized_chunks -= info->event.free_ufo.chunks_freed;
+            data->current.materialized_chunks -= info->event.free_ufo.chunks_freed;
             data->current.memory_usage -= info->event.allocate_ufo.header_size_with_padding;
-            //data->current.memory_usage -= info->event.free_ufo.memory_freed;
-            //data->current.disk_usage -= info->event.free_ufo.disk_freed;
+            data->current.memory_usage -= info->event.free_ufo.memory_freed;
+            data->current.disk_usage -= info->event.free_ufo.disk_freed;
             data->current.intended_memory_usage -= info->event.free_ufo.intended_header_size;
             data->current.intended_memory_usage -= info->event.free_ufo.intended_body_size;
             data->current.apparent_memory_usage -= info->event.free_ufo.total_size_with_padding;
@@ -245,6 +245,8 @@ int64_t *seq_new(UfoCore *ufo_system, size_t from, size_t to, size_t by, bool re
     parameters.read_only = false;
     parameters.populate_data = data; // populate data is copied by UFO, so this should be fine.
     parameters.populate_fn = seq_populate;
+    parameters.writeback_listener = NULL;
+    parameters.writeback_listener_data = NULL;
 
     UfoObj ufo_object = ufo_new_object(ufo_system, &parameters);
     if (ufo_is_error(&ufo_object)) {
@@ -367,8 +369,7 @@ int main(int argc, char **argv) {
 
     INFO("Shutting down UFO core\n");
     ufo_core_shutdown(ufo_system);
-
-    sleep(10);
+    INFO("Core shutdown, the shutdown message should strictly preceeed this\n");
 
     // Report events.
     INFO("Recorded %li events\n", data->events);

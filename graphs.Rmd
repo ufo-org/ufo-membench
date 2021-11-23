@@ -40,6 +40,21 @@ Load R libraries:
 library(dplyr)
 library(readr)
 library(ggplot2)
+library(gdata)
+library(scales)
+```
+```{r}
+KB <- function(x) { x * 1024 }
+MB <- function(x) { x * 1024 * 1024 }
+GB <- function(x) { x * 1024 * 1024 * 1024 }
+
+# labels_nanoseconds <- function(x) {
+#   ifelse(abs(x) < 1000, paste0(x, "ns"),
+#          ifelse(abs(x) < 1000 * 1000, paste0(x, "µs"), 
+#                 ifelse(x < 1000 * 1000, paste0(x, "ms"))
+#                 )
+#   )
+# }
 ```
 
 Ingest the data
@@ -48,5 +63,13 @@ data <- read_csv("membench.csv")
 ```
 
 ```{r fig.width=20, fig.height=10}
-ggplot(data, aes(x=timestamp)) + geom_line(aes(y=memory_usage)) #+ geom_line(aes(y=disk_usage)) #+ geom_line(aes(y=intended_memory_usage)) + geom_line(aes(y=apparent_memory_usage))
+ggplot(data, aes(x=timestamp)) + 
+  geom_area(aes(y=memory_usage), fill="#69b3a2", alpha=0.4) +
+  geom_line(aes(y=intended_memory_usage), color="#69b3a2", size=2) +
+  theme_linedraw() + 
+  scale_y_continuous(breaks=MB(10*(0:8)), labels = function(x) humanReadable(x, standard = "IEC", sep = "")) +
+  scale_x_continuous(labels = function(x) humanReadable(x, standard = "SI", sep = "", units="")) +
+  theme(axis.title.y = element_blank())
+  
+  #geom_line(aes(y=memory_usage)) #+ geom_line(aes(y=disk_usage)) #+ geom_line(aes(y=intended_memory_usage)) + geom_line(aes(y=apparent_memory_usage))
 ```

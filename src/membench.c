@@ -331,6 +331,7 @@ int main(int argc, char **argv) {
     CallbackData *data = (CallbackData *) calloc(1, sizeof(CallbackData));
     data->csv_file = config.csv_file;
 
+    INFO("Starting up UFO core\n");
     UfoCore ufo_system = ufo_new_core("/tmp/", config.high_water_mark, config.low_water_mark);
     if (ufo_core_is_error(&ufo_system)) {
           REPORT("Cannot create UFO core system.\n");
@@ -364,9 +365,10 @@ int main(int argc, char **argv) {
     // }
     seq_free(&ufo_system, ufo);
 
+    INFO("Shutting down UFO core\n");
     ufo_core_shutdown(ufo_system);
 
-    sleep(5);
+    sleep(10);
 
     // Report events.
     INFO("Recorded %li events\n", data->events);

@@ -359,6 +359,7 @@ int main(int argc, char **argv) {
         } else {
             sum += ufo[i];
         }
+        last_write++;
     }
 
     INFO("Freeing %li UFOs\n", config.ufos);

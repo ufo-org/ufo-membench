@@ -29,8 +29,8 @@ Run the benchmark with parameters:
   - `high-water-mark`The threshold for memory used by materialized chunks before GC starts (in bytes),
   - `low-water-mark` Once GC starts, it removes chunks until this much memory is left (in bytes),
 
-``` bash
-./membench --size=$((10*1000*1000)) --writes=100 --min-load=$((1024 * 1024 / 8)) --high-water-mark=$((100 * 1024*1024)) --low-water-mark=$((10 * 1024 * 1024))
+``` {bash}
+./membench --size=$((10*1000*1000)) --writes=100 --min-load=$((1024 * 1024 / 8)) --high-water-mark=$((10 * 1024 * 1024)) --low-water-mark=$((1 * 1024 * 1024))
 ```
 
 ### Memory and disk usage graph
@@ -69,6 +69,7 @@ ggplot(data, aes(x=timestamp)) +
   theme_linedraw() + 
   scale_y_continuous(breaks=MB(10*(0:8)), labels = function(x) humanReadable(x, standard = "IEC", sep = "")) +
   scale_x_continuous(labels = function(x) humanReadable(x, standard = "SI", sep = "", units="")) +
+  geom_line(aes(y=disk_usage)) +
   theme(axis.title.y = element_blank())
   
   #geom_line(aes(y=memory_usage)) #+ geom_line(aes(y=disk_usage)) #+ geom_line(aes(y=intended_memory_usage)) + geom_line(aes(y=apparent_memory_usage))

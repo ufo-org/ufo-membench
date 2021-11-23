@@ -22,6 +22,7 @@ bool file_exists (const char *filename) {
 
 typedef struct {
     char *csv_file;
+    char *parameter_file;
     size_t ufos;
     size_t size;
     size_t sample_size;
@@ -44,6 +45,7 @@ static error_t parse_opt (int key, char *value, struct argp_state *state) {
         case 'l': arguments->low_water_mark = (size_t) atol(value); break;
         // case 'o': arguments->file = value; break;
         case 'o': arguments->csv_file = value; break;
+        case 'p': arguments->parameter_file = value; break;
         case 'n': arguments->sample_size = (size_t) atol(value); break;
         case 'w': arguments->writes = (size_t) atol(value); break;
         case 'S': arguments->seed = (unsigned int) atoi(value); break;
@@ -90,21 +92,20 @@ typedef struct {
 
 void callback_data_to_csv(CallbackData *data) {
     FILE *output_stream;
-    if (!file_exists(data->csv_file)) {
-        output_stream = fopen(data->csv_file, "w");
-        fprintf(output_stream,                
-               "event,"
-               "timestamp,"
-               "ufos,"
-               "materialized_chunks,"
-               "intended_memory_usage,"
-               "apparent_memory_usage,"
-               "memory_usage,"
-               "disk_usage\n");
-    } else {
-        output_stream = fopen(data->csv_file, "a");
-    }
-
+    // if (!file_exists(data->csv_file)) {
+    output_stream = fopen(data->csv_file, "w");
+    fprintf(output_stream,                
+            "event,"
+            "timestamp,"
+            "ufos,"
+            "materialized_chunks,"
+            "intended_memory_usage,"
+            "apparent_memory_usage,"
+            "memory_usage,"
+            "disk_usage\n");
+    // } else {
+    //     output_stream = fopen(data->csv_file, "a");
+    // }
 
     for (size_t i = 0; i < data->events; i++) {
         fprintf(output_stream, 
@@ -159,7 +160,7 @@ void callback(void* raw_data, const UfoEventandTimestamp* info) {
         case PopulateChunk:
             data->current.event_type = 'M'; // aterialize chunk
             data->current.materialized_chunks++;
-            data->current.memory_usage = info->event.populate_chunk.memory_used;
+            data->current.memory_usage += info->event.populate_chunk.memory_used;
         break;
         case UnloadChunk:
             data->current.event_type = 'D'; // ematerialize chunk
@@ -288,6 +289,7 @@ int main(int argc, char **argv) {
     config.high_water_mark = 2 *GB;
     config.low_water_mark = 1 *GB;
     config.csv_file = "membench.csv";
+    config.parameter_file = "parameters.csv";
     config.sample_size = 0; // 0 for all
     config.writes = 0; // 0 for none
     config.seed = 42;
@@ -303,7 +305,8 @@ int main(int argc, char **argv) {
         {"min-load",        'm', "#B",             0,  "Min load count for ufo"},
         {"high-water-mark", 'h', "#B",             0,  "High water mark for ufo GC"},
         {"low-water-mark",  'l', "#B",             0,  "Low water mark for ufo GC"},
-        {"csv_file",        'o', "FILE",           0,  "Path of CSV output file"},        
+        {"csv_file",        'o', "FILE",           0,  "Path of CSV output file containing observations"},        
+        {"parameter_file",  'p', "FILE",           0,  "Path of CSV output file containing parameters"},  
         {"seed",            'S', "N",              0,  "Random seed, default: 42"},
         { 0 }
     };
@@ -318,6 +321,7 @@ int main(int argc, char **argv) {
     INFO("  * high_water_mark: %lu\n", config.high_water_mark);
     INFO("  * low_water_mark:  %lu\n", config.low_water_mark );
     INFO("  * csv_file:        %s\n",  config.csv_file       );
+    INFO("  * parameter_file:  %s\n",  config.parameter_file );
     INFO("  * writes:          %lu\n", config.writes         );
     INFO("  * sample_size:     %lu\n", config.sample_size    );
     INFO("  * seed:            %u\n",  config.seed           );
@@ -343,23 +347,18 @@ int main(int argc, char **argv) {
     // for (size_t i = 0; i < config.ufos; i++) {
     //      ufos[i] = seq_new(&ufo_system, 0, config.size, 1, config.writes == 0, config.min_load);
     // }
+
     int64_t *ufo = seq_new(&ufo_system, 0, config.size, 1, config.writes == 0, config.min_load);
-
-    size_t n = config.ufos * (config.sample_size == 0 ? config.size : config.sample_size);
-  
     int64_t sum = 0;
-    // size_t last_write = 0;
+    size_t last_write = 0;
+    size_t n = config.ufos * (config.sample_size == 0 ? config.size : config.sample_size);  
     for (size_t i = 0; i < n; i++) {
-        // if (config.writes != 0 && i == last_write + config.writes) {
-        //     ufo[i] = 42;
-        // } else {
-        printf("i=%li\n", i);
-        sum += ufo[i];
-        // }
+        if (config.writes != 0 && i == last_write + config.writes) {
+            ufo[i] = 42;
+        } else {
+            sum += ufo[i];
+        }
     }
-
-    sleep(3);
-    callback_data_to_csv(data);   
 
     INFO("Freeing %li UFOs\n", config.ufos);
     // for (size_t i = 0; i < config.ufos; i++) {
@@ -369,7 +368,8 @@ int main(int argc, char **argv) {
 
     ufo_core_shutdown(ufo_system);
 
-    sleep(10);
+    sleep(5);
+    callback_data_to_csv(data);   
 
     // Report events.
     INFO("Recorded %li events\n", data->events);

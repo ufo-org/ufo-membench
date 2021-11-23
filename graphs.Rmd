@@ -1,0 +1,52 @@
+---
+title: "Membench"
+author: "K. Siek"
+date: "November 23, 2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Membench
+
+A micro benchmark to show the memory usage of UFOs. This notebook runs and graphs memory consumption.
+
+### Compiling and running the benchmark
+
+Compile the benchmark.
+
+```{bash}
+make
+```
+
+Run the benchmark with parameters:
+
+  - `size`  Size of the UFO (in elements of type `int64_t`),
+  - `writes` The number of read operations between writes, zero for read-only,
+  - `min-load` UFO chunk size (in bytes),
+  - `high-water-mark`The threshold for memory used by materialized chunks before GC starts (in bytes),
+  - `low-water-mark` Once GC starts, it removes chunks until this much memory is left (in bytes),
+
+``` bash
+./membench --size=$((10*1000*1000)) --writes=100 --min-load=$((1024 * 1024 / 8)) --high-water-mark=$((100 * 1024*1024)) --low-water-mark=$((10 * 1024 * 1024))
+```
+
+### Memory and disk usage graph
+
+Load R libraries:
+```{r}
+library(dplyr)
+library(readr)
+library(ggplot2)
+```
+
+Ingest the data
+```{r}
+data <- read_csv("membench.csv")
+```
+
+```{r fig.width=20, fig.height=10}
+ggplot(data, aes(x=timestamp)) + geom_line(aes(y=memory_usage)) #+ geom_line(aes(y=disk_usage)) #+ geom_line(aes(y=intended_memory_usage)) + geom_line(aes(y=apparent_memory_usage))
+```

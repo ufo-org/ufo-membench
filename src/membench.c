@@ -15,6 +15,8 @@
 #define MB (1024UL * 1024UL)
 #define KB (1024UL)
 
+#define MAX_UFOS 2
+
 bool file_exists (const char *filename) {
   struct stat buffer;   
   return (stat (filename, &buffer) == 0);
@@ -107,6 +109,12 @@ typedef struct {
     // How much disk space is in use. This accounts for dematerialized chunks
     // being cached on disk. In bytes.
     uint64_t disk_usage;
+
+    // How much memory is initialized by each UFO. In bytes.
+    uint64_t memory_usage_per_ufo[MAX_UFOS];
+
+    // How much memory is initialized by each UFO. In bytes.
+    uint64_t disk_usage_per_ufo[MAX_UFOS];
 } Event;
 
 typedef struct {
@@ -128,14 +136,19 @@ void callback_data_to_csv(CallbackData *data) {
             "intended_memory_usage,"
             "apparent_memory_usage,"
             "memory_usage,"
-            "disk_usage\n");
-    // } else {
-    //     output_stream = fopen(data->csv_file, "a");
-    // }
+            "disk_usage,");
+
+    for (size_t j = 0; j < MAX_UFOS; j++) {
+        fprintf(output_stream, 
+                "ufo_%li_memory_usage,"
+                "ufo_%li_disk_usage,", j, j);
+    }
+
+    fprintf(output_stream,"\n");
 
     for (size_t i = 0; i < data->events; i++) {
         fprintf(output_stream, 
-            "%c,%li,%li,%li,%li,%li,%li,%li\n",
+            "%c,%li,%li,%li,%li,%li,%li,%li,",
             data->history[i].event_type,
             data->history[i].timestamp,
             data->history[i].ufos,
@@ -144,6 +157,15 @@ void callback_data_to_csv(CallbackData *data) {
             data->history[i].apparent_memory_usage,
             data->history[i].memory_usage,
             data->history[i].disk_usage);
+
+        for (size_t j= 0; j < MAX_UFOS; j++) {
+            fprintf(output_stream, 
+                    "%li,%li,",
+                    data->history[i].memory_usage_per_ufo[j],
+                    data->history[i].disk_usage_per_ufo[j]);
+        }
+
+        fprintf(output_stream, "\n");
     }
 
     fclose(output_stream);
@@ -166,6 +188,9 @@ void callback(void* raw_data, const UfoEventandTimestamp* info) {
             data->current.intended_memory_usage += info->event.allocate_ufo.intended_header_size;
             data->current.intended_memory_usage += info->event.allocate_ufo.intended_body_size;
             data->current.apparent_memory_usage += info->event.allocate_ufo.total_size_with_padding;         
+            //printf("UFO_ID: %li\n", info->event.allocate_ufo.ufo_id);
+
+//            data->current.disk_usage_per_ufo[info->event.allocate_ufo.ufo_id - 1] 
         break;
         case FreeUfo:
             data->current.event_type = 'F'; // ree UFO
@@ -177,18 +202,25 @@ void callback(void* raw_data, const UfoEventandTimestamp* info) {
             data->current.intended_memory_usage -= info->event.free_ufo.intended_header_size;
             data->current.intended_memory_usage -= info->event.free_ufo.intended_body_size;
             data->current.apparent_memory_usage -= info->event.free_ufo.total_size_with_padding;
+
+            data->current.memory_usage_per_ufo[info->event.free_ufo.ufo_id - 1] -= info->event.allocate_ufo.header_size_with_padding;
+            data->current.memory_usage_per_ufo[info->event.free_ufo.ufo_id - 1] -= info->event.free_ufo.memory_freed;
+            data->current.disk_usage_per_ufo[info->event.free_ufo.ufo_id - 1] -= info->event.free_ufo.disk_freed;         
         break;
         case PopulateChunk:
             data->current.event_type = 'M'; // aterialize chunk
             data->current.materialized_chunks++;
             data->current.memory_usage += info->event.populate_chunk.memory_used;
+            data->current.memory_usage_per_ufo[info->event.populate_chunk.ufo_id - 1] += info->event.populate_chunk.memory_used;
         break;
         case UnloadChunk:
             data->current.event_type = 'D'; // ematerialize chunk
             data->current.materialized_chunks--;
             data->current.memory_usage -= info->event.unload_chunk.memory_freed;
+            data->current.memory_usage_per_ufo[info->event.unload_chunk.ufo_id - 1] -= info->event.unload_chunk.memory_freed;
             if (info->event.unload_chunk.disposition == NewlyDirty) {                
                 data->current.disk_usage += info->event.unload_chunk.memory_freed;
+                data->current.disk_usage_per_ufo[info->event.unload_chunk.ufo_id - 1] += info->event.unload_chunk.memory_freed;
             }                         
         break;
         case UfoReset:
@@ -196,6 +228,8 @@ void callback(void* raw_data, const UfoEventandTimestamp* info) {
             data->current.disk_usage -= info->event.ufo_reset.disk_freed;
             data->current.memory_usage -= info->event.ufo_reset.memory_freed;
             data->current.materialized_chunks -= info->event.ufo_reset.chunks_freed;
+            data->current.memory_usage_per_ufo[info->event.ufo_reset.ufo_id - 1] -= info->event.ufo_reset.memory_freed;
+            data->current.disk_usage_per_ufo[info->event.ufo_reset.ufo_id - 1] -= info->event.ufo_reset.disk_freed;
         break;
         case GcCycleStart:
             data->current.event_type = 'S'; // tart GC
@@ -355,7 +389,7 @@ int main(int argc, char **argv) {
     // Set seed.
     srand(config.seed);
 
-    ufo_begin_log();
+    //ufo_begin_log();
 
     // Run the benchmark
     CallbackData *data = (CallbackData *) calloc(1, sizeof(CallbackData));
@@ -378,6 +412,7 @@ int main(int argc, char **argv) {
     // }
 
     int64_t *ufo = seq_new(&ufo_system, 0, config.size, 1, config.writes == 0, config.min_load);
+    seq_new(&ufo_system, 0, config.size, 1, config.writes == 0, config.min_load);
     int64_t sum = 0;
     size_t last_write = 0;
     size_t n = config.ufos * (config.sample_size == 0 ? config.size : config.sample_size);  

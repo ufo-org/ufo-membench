@@ -33,6 +33,32 @@ typedef struct {
     unsigned int seed;
 } Arguments;
 
+void parameters_to_csv(Arguments *config) {
+    FILE *output_stream;
+    // if (!file_exists(data->csv_file)) {
+    output_stream = fopen(config->parameter_file, "w");
+    fprintf(output_stream,                
+            "ufos,"
+            "size,"
+            "sample_size,"
+            "min_load,"
+            "high_water_mark,"
+            "low_water_mark,"
+            "writes\n");
+    
+    fprintf(output_stream, 
+            "%li,%li,%li,%li,%li,%li,%li\n",
+            config->ufos,
+            config->size,
+            config->sample_size,
+            config->min_load,
+            config->high_water_mark,
+            config->low_water_mark,
+            config->writes);    
+
+    fclose(output_stream);
+}
+
 static error_t parse_opt (int key, char *value, struct argp_state *state) {
     /* Get the input argument from argp_parse, which we
         know is a pointer to our arguments structure. */
@@ -329,6 +355,8 @@ int main(int argc, char **argv) {
     // Set seed.
     srand(config.seed);
 
+    ufo_begin_log();
+
     // Run the benchmark
     CallbackData *data = (CallbackData *) calloc(1, sizeof(CallbackData));
     data->csv_file = config.csv_file;
@@ -375,7 +403,8 @@ int main(int argc, char **argv) {
     // Report events.
     INFO("Recorded %li events\n", data->events);
     INFO("Sum: %li\n", sum);
-    callback_data_to_csv(data);   
+    callback_data_to_csv(data);
+    parameters_to_csv(&config);
 
     free(data);
 

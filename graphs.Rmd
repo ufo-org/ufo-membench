@@ -30,7 +30,7 @@ Run the benchmark with parameters:
   - `low-water-mark` Once GC starts, it removes chunks until this much memory is left (in bytes),
 
 ``` {bash}
-./membench --size=$((10*1000*1000)) --writes=0 --min-load=$((1024 * 1024 / 8)) --high-water-mark=$((10 * 1024 * 1024)) --low-water-mark=$((1 * 1024 * 1024))
+./membench --size=$((10 * 1000 * 1000)) --writes=10 --min-load=$((4096)) --high-water-mark=$((100 * 1024)) --low-water-mark=$((1 * 1024))
 ```
 
 ### Memory and disk usage graph
@@ -72,7 +72,7 @@ ggplot(data, aes(x=timestamp)) +
   scale_y_continuous(breaks=MB(25*(0:3)), labels = function(x) humanReadable(x, standard = "IEC", sep = "")) +
   scale_x_continuous(labels = function(x) paste0(floor(x / 1000 / 1000), "ms")) +
   geom_area(aes(y=disk_usage), fill="#8C5383") +
-  theme(axis.title.y = element_blank())
+  theme(axis.title.y = element_blank(), axis.title.x = element_text("time"))
   
   #geom_line(aes(y=memory_usage)) #+ geom_line(aes(y=disk_usage)) #+ geom_line(aes(y=intended_memory_usage)) + geom_line(aes(y=apparent_memory_usage))
 ```

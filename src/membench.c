@@ -339,6 +339,15 @@ int random_int(int ceiling) {
     return rand() % ceiling;
 }
 
+size_t select_ufo(size_t i, size_t n, size_t ufos) {
+    for (size_t u = ufos; u > 0; u--) {
+        if (i > (u * n / ufos)) {
+            return u - 1;
+        }
+    }
+    return 0;
+}
+
 int main(int argc, char **argv) {
 
     Arguments config;
@@ -386,6 +395,12 @@ int main(int argc, char **argv) {
     INFO("  * sample_size:     %lu\n", config.sample_size    );
     INFO("  * seed:            %u\n",  config.seed           );
 
+    // Check how many UFOs we can handle in our recording structures.
+    if (config.ufos > MAX_UFOS) {
+        fprintf(stderr, "Exceeded max number of ufos: %li > %i\n", config.ufos, MAX_UFOS);
+        exit(3);
+    }
+
     // Set seed.
     srand(config.seed);
 
@@ -402,34 +417,36 @@ int main(int argc, char **argv) {
           exit(1);
     }
     
+    // Attach event recorder.
     ufo_new_event_handler(&ufo_system, (void *) data, &callback);
 
     // Allocate so many ufos.
     INFO("Allocating %li UFOs\n", config.ufos);
-    //int64_t **ufos = (int64_t **) malloc(config.ufos * sizeof(int64_t *));
-    // for (size_t i = 0; i < config.ufos; i++) {
-    //      ufos[i] = seq_new(&ufo_system, 0, config.size, 1, config.writes == 0, config.min_load);
-    // }
 
-    int64_t *ufo = seq_new(&ufo_system, 0, config.size, 1, config.writes == 0, config.min_load);
-    seq_new(&ufo_system, 0, config.size, 1, config.writes == 0, config.min_load);
+    int64_t **ufos = (int64_t **) malloc(config.ufos * sizeof(int64_t *));
+    for (size_t i = 0; i < config.ufos; i++) {
+         ufos[i] = seq_new(&ufo_system, 0, config.size, 1, config.writes == 0, config.min_load);
+    }
+
     int64_t sum = 0;
     size_t last_write = 0;
-    size_t n = config.ufos * (config.sample_size == 0 ? config.size : config.sample_size);  
-    for (size_t i = 0; i < n; i++) {
+    size_t n = (config.sample_size == 0 ? config.size : config.sample_size);  
+    for (size_t j = 0; j < config.ufos; j++) 
+    for (size_t i = 0; i < n; i++) {        
+        // INFO("UFO %li <- %li/%li\n", ufo, i, n);
         if ((config.writes != 0) && (i == last_write + config.writes)) {
-            ufo[i] = 42;
+            ufos[j][i] = 42;
             last_write = i;
         } else {
-            sum += ufo[i];
+            sum += ufos[j][i];
         }        
     }
 
     INFO("Freeing %li UFOs\n", config.ufos);
-    // for (size_t i = 0; i < config.ufos; i++) {
-    //     seq_free(&ufo_system, ufos[i]);
-    // }
-    seq_free(&ufo_system, ufo);
+    for (size_t i = 0; i < config.ufos; i++) {
+        seq_free(&ufo_system, ufos[i]);
+    }
+    // seq_free(&ufo_system, ufo);
 
     INFO("Shutting down UFO core\n");
     ufo_core_shutdown(ufo_system);

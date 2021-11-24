@@ -70,10 +70,11 @@ parameters <- read_csv("parameters.csv")
 ```
 
 ```{r fig.width=20, fig.height=10}
-
-max_memory_usage <- max(data$memory_usage, data$intended_memory_usage, data$disk_usage, data$apparent_memory_usage, parameters$high_water_mark)
-memory_order <- find_memory_order(max_memory_usage)
-memory_breaks <- memory_order((0:(max_memory_usage / memory_order(1) / 10)) * 10)
+memory_breaks <- function(step=20) {
+  max_memory_usage <- max(data$memory_usage, data$intended_memory_usage, data$disk_usage, data$apparent_memory_usage, parameters$high_water_mark)
+  memory_order <- find_memory_order(max_memory_usage)
+  memory_order((0:(max_memory_usage / memory_order(1) / step)) * step)
+}
 
 memory_usage_color <- "#559CAD"
 disk_usage_color <- "#8C5383"
@@ -94,11 +95,13 @@ ggplot(data, aes(x=timestamp)) +
   geom_step(aes(y=apparent_memory_usage), color=ufo_actual_color, size=0.5, linetype = "dashed") +
   # Threshods
   geom_hline(yintercept=parameters$high_water_mark, color=high_watermark_color, linetype = "dashed") +
+  geom_text(aes(y=parameters$high_water_mark, x=unique(min(timestamp))+10000, label="high watermark", fontface="italic"), color=high_watermark_color, text=element_text(size=10), vjust=-0.25, hjust=0, check_overlap = TRUE) +
   geom_hline(yintercept=parameters$low_water_mark, color=low_watermark_color, linetype = "dashed") +
+  geom_text(aes(y=parameters$low_water_mark, x=unique(min(timestamp))+10000, label="low watermark", fontface="italic"), color=low_watermark_color, text=element_text(size=10), vjust=-0.25, hjust=0, check_overlap = TRUE) +
   # Theming
   theme_linedraw() + 
-  scale_y_continuous(breaks=memory_breaks, labels = function(x) humanReadable(x, standard = "IEC", sep = "")) +
-  scale_x_continuous(labels = function(x) paste0(floor(x / 1000 / 1000), "ms")) +
+  scale_y_continuous(breaks=memory_breaks(20), labels = function(x) humanReadable(x, standard = "IEC", sep = "")) +
+  scale_x_continuous(labels = function(x) paste0(floor(x / 1000 / 1000), "ms"), expand=c(0,0)) +
   theme(axis.title.y = element_blank(), axis.title.x = element_text("time"))
   
   #geom_line(aes(y=memory_usage)) #+ geom_line(aes(y=disk_usage)) #+ geom_line(aes(y=intended_memory_usage)) + geom_line(aes(y=apparent_memory_usage))

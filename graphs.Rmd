@@ -23,6 +23,7 @@ make
 
 Run the benchmark with parameters:
 
+  - `ufos` Number of vectors (1 or 2)
   - `size`  Size of the UFO (in elements of type `int64_t`),
   - `writes` The number of read operations between writes, zero for read-only,
   - `min-load` UFO chunk size (in bytes),
@@ -30,7 +31,7 @@ Run the benchmark with parameters:
   - `low-water-mark` Once GC starts, it removes chunks until this much memory is left (in bytes),
 
 ``` {bash}
-./membench --size=$((10 * 1000 * 1000)) --writes=10 --min-load=$((4096)) --high-water-mark=$((100 * 1024)) --low-water-mark=$((1 * 1024))
+./membench --size=$((10*1000*1000)) --writes=100 --min-load=$((10*4096)) --high-water-mark=$((20 * 1024 * 1024)) --low-water-mark=$((10 * 1024 * 1024)) --ufos=2
 ```
 
 ### Memory and disk usage graph
@@ -42,6 +43,10 @@ library(readr)
 library(ggplot2)
 library(gdata)
 library(scales)
+library(cowplot)
+
+library(extrafont)
+loadfonts()
 ```
 
 Helper functions
@@ -61,6 +66,8 @@ find_memory_order <- function(x) {
 #                 )
 #   )
 # }
+
+drop_zeros <- function(x) ifelse(x != 0, x, NA)
 ```
 
 Ingest the data
@@ -76,33 +83,44 @@ memory_breaks <- function(step=20) {
   memory_order((0:(max_memory_usage / memory_order(1) / step)) * step)
 }
 
-memory_usage_color <- "#559CAD"
-disk_usage_color <- "#8C5383"
+memory_usage_color <- "#457b9d"
+ufo_1_memory_usage_color <- "#f1faee"
+ufo_0_memory_usage_color <- "#a8dadc"
+disk_usage_color <- "#f4a261"
 ufo_perceived_color <- "black"
 ufo_actual_color <- "black"
-high_watermark_color <- "red"
-low_watermark_color <- "red"
+high_watermark_color <- "#e63946"
+low_watermark_color <- "#e63946"
 
-ggplot(data, aes(x=timestamp)) + 
-  # Memory usage area
+graph_data <- data %>% mutate(memory_usage = drop_zeros(memory_usage)) %>% mutate(disk_usage = drop_zeros(disk_usage)) %>% mutate(ufo_0_memory_usage = drop_zeros(ufo_0_memory_usage)) %>% mutate(ufo_1_memory_usage = drop_zeros(ufo_1_memory_usage))
+
+offset <- 1000000
+
+p <- ggplot(graph_data, aes(x=timestamp)) + 
+  geom_rect(aes(xmin=timestamp,xmax=lead(timestamp),ymin=0,ymax=disk_usage), fill=disk_usage_color, alpha=1) +
+  geom_rect(aes(xmin=timestamp,xmax=lead(timestamp),ymin=0,ymax=memory_usage), fill=memory_usage_color, alpha=1) +
   geom_step(aes(y=memory_usage), color=memory_usage_color) +
-  geom_rect(aes(xmin=timestamp,xmax=lead(timestamp),ymin=0,ymax=memory_usage), fill=memory_usage_color, alpha=0.9) +
-  # Disk usage area
-  geom_step(aes(y=disk_usage), color=disk_usage_color) +
-  geom_rect(aes(xmin=timestamp,xmax=lead(timestamp),ymin=0,ymax=disk_usage), fill=disk_usage_color, alpha=0.9) +
+  geom_step(aes(y=disk_usage), color=disk_usage_color, size=1) +
+  geom_step(aes(y=ufo_0_memory_usage), color=ufo_0_memory_usage_color, linetype = "longdash", size=1) +
+  geom_step(aes(y=ufo_1_memory_usage), color=ufo_1_memory_usage_color, linetype = "longdash", size=1) +
   # UFO sizes
-  geom_step(aes(y=intended_memory_usage), color=ufo_perceived_color, size=1) +
+  #geom_step(aes(y=intended_memory_usage), color=ufo_perceived_color, size=1) +
   geom_step(aes(y=apparent_memory_usage), color=ufo_actual_color, size=0.5, linetype = "dashed") +
   # Threshods
   geom_hline(yintercept=parameters$high_water_mark, color=high_watermark_color, linetype = "dashed") +
-  geom_text(aes(y=parameters$high_water_mark, x=unique(min(timestamp))+10000, label="high watermark", fontface="italic"), color=high_watermark_color, text=element_text(size=10), vjust=-0.25, hjust=0, check_overlap = TRUE) +
+  geom_text(aes(y=parameters$high_water_mark, x=unique(min(timestamp))+offset, label="high watermark"), color=high_watermark_color, text=element_text(size=10), vjust=-0.25, hjust=0, check_overlap = TRUE) +
   geom_hline(yintercept=parameters$low_water_mark, color=low_watermark_color, linetype = "dashed") +
-  geom_text(aes(y=parameters$low_water_mark, x=unique(min(timestamp))+10000, label="low watermark", fontface="italic"), color=low_watermark_color, text=element_text(size=10), vjust=-0.25, hjust=0, check_overlap = TRUE) +
+  geom_text(aes(y=parameters$low_water_mark, x=unique(min(timestamp))+offset, label="low watermark"), color=low_watermark_color, text=element_text(size=10), vjust=-0.25, hjust=0, check_overlap = TRUE) +
   # Theming
+  guides(color = guide_legend(title="XXX")) +
   theme_linedraw() + 
-  scale_y_continuous(breaks=memory_breaks(20), labels = function(x) humanReadable(x, standard = "IEC", sep = "")) +
+  scale_y_continuous(labels = function(x) humanReadable(x, standard = "IEC", sep = ""),  expand = expansion(mult = c(0, .05))) + # breaks=memory_breaks(20), 
   scale_x_continuous(labels = function(x) paste0(floor(x / 1000 / 1000), "ms"), expand=c(0,0)) +
-  theme(axis.title.y = element_blank(), axis.title.x = element_text("time"))
-  
-  #geom_line(aes(y=memory_usage)) #+ geom_line(aes(y=disk_usage)) #+ geom_line(aes(y=intended_memory_usage)) + geom_line(aes(y=apparent_memory_usage))
+  theme(axis.title.y = element_blank()) +
+  scale_color_manual(values = colors) +
+  xlab("elapsed time")
+
+ggsave(plot=p, filename="membench.pdf", width=20, height=10, dpi = "print")
+
+p
 ```

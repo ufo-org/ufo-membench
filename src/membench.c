@@ -184,7 +184,7 @@ void callback(void* raw_data, const UfoEventandTimestamp* info) {
         case AllocateUfo: 
             data->current.event_type = 'A'; // llocate UFO
             data->current.ufos++;
-            data->current.memory_usage = info->event.allocate_ufo.header_size_with_padding;
+            data->current.memory_usage += info->event.allocate_ufo.header_size_with_padding;
             data->current.intended_memory_usage += info->event.allocate_ufo.intended_header_size;
             data->current.intended_memory_usage += info->event.allocate_ufo.intended_body_size;
             data->current.apparent_memory_usage += info->event.allocate_ufo.total_size_with_padding;         
@@ -424,22 +424,25 @@ int main(int argc, char **argv) {
     INFO("Allocating %li UFOs\n", config.ufos);
 
     int64_t **ufos = (int64_t **) malloc(config.ufos * sizeof(int64_t *));
-    for (size_t i = 0; i < config.ufos; i++) {
-         ufos[i] = seq_new(&ufo_system, 0, config.size, 1, config.writes == 0, config.min_load);
-    }
+    // for (size_t i = 0; i < config.ufos; i++) {
+    //      ufos[i] = seq_new(&ufo_system, 0, config.size, 1, config.writes == 0, config.min_load);
+    // }
 
+    INFO("Running...\n");
     int64_t sum = 0;
     size_t last_write = 0;
     size_t n = (config.sample_size == 0 ? config.size : config.sample_size);  
-    for (size_t j = 0; j < config.ufos; j++) 
-    for (size_t i = 0; i < n; i++) {        
-        // INFO("UFO %li <- %li/%li\n", ufo, i, n);
-        if ((config.writes != 0) && (i == last_write + config.writes)) {
-            ufos[j][i] = 42;
-            last_write = i;
-        } else {
-            sum += ufos[j][i];
-        }        
+    for (size_t j = 0; j < config.ufos; j++) {
+        ufos[j] = seq_new(&ufo_system, 0, config.size / (j + 1), 1, config.writes == 0, config.min_load);
+        for (size_t i = 0; i < n / (j + 1); i++) {        
+            // INFO("UFO %li <- %li/%li\n", ufo, i, n);
+            if ((config.writes != 0) && (i == last_write + config.writes)) {
+                ufos[j][i] = 42;
+                last_write = i;
+            } else {
+                sum += ufos[j][i];
+            }        
+        }
     }
 
     INFO("Freeing %li UFOs\n", config.ufos);

@@ -1,2 +1,2 @@
 ufos,size,sample_size,min_load,high_water_mark,low_water_mark,writes
-2,10000,0,4096,2097152,1048576,100
+2,10000000,0,40960,20971520,10485760,100

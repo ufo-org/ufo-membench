@@ -441,14 +441,17 @@ int main(int argc, char **argv) {
                 last_write = i;
             } else {
                 sum += ufos[j][i];
-            }        
+            }
+            if (i == n / 2 && j > 0) {
+                seq_free(&ufo_system, ufos[j]);
+            }
         }
     }
 
     INFO("Freeing %li UFOs\n", config.ufos);
-    for (size_t i = 0; i < config.ufos; i++) {
-        seq_free(&ufo_system, ufos[i]);
-    }
+    //for (size_t i = 0; i < config.ufos; i++) {
+    seq_free(&ufo_system, ufos[config.ufos - 1]);
+    //}
     // seq_free(&ufo_system, ufo);
 
     INFO("Shutting down UFO core\n");

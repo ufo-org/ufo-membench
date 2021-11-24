@@ -91,39 +91,62 @@ ufo_perceived_color <- "black"
 ufo_actual_color <- "black"
 high_watermark_color <- "#e63946"
 low_watermark_color <- "#e63946"
+ufo_0_created_color <- "grey"
+ufo_1_created_color <- "grey"
 
-graph_data <- data %>% mutate(memory_usage = drop_zeros(memory_usage)) %>% mutate(disk_usage = drop_zeros(disk_usage)) %>% mutate(ufo_0_memory_usage = drop_zeros(ufo_0_memory_usage)) %>% mutate(ufo_1_memory_usage = drop_zeros(ufo_1_memory_usage))
+graph_data <- data %>% mutate(memory_usage = drop_zeros(memory_usage),
+                              disk_usage = drop_zeros(disk_usage),
+                              ufo_0_memory_usage = drop_zeros(ufo_0_memory_usage),
+                              ufo_1_memory_usage = drop_zeros(ufo_1_memory_usage))
 
 offset <- 1000000
 
+ufo_0_created_y <- unique(data$apparent_memory_usage[data$apparent_memory_usage != 0])[1]
+ufo_1_created_y <- unique(data$apparent_memory_usage[data$apparent_memory_usage != 0])[2]
+ufo_0_created_x <- data %>%filter(data$apparent_memory_usage == ufo_0_created_y) %>% pull(timestamp) %>% min 
+ufo_1_created_x <- data %>%filter(data$apparent_memory_usage == ufo_1_created_y) %>% pull(timestamp) %>% min 
+
 p <- ggplot(graph_data, aes(x=timestamp)) + 
-  geom_rect(aes(xmin=timestamp,xmax=lead(timestamp),ymin=0,ymax=disk_usage), fill=disk_usage_color, alpha=1) +
-  geom_rect(aes(xmin=timestamp,xmax=lead(timestamp),ymin=0,ymax=memory_usage), fill=memory_usage_color, alpha=1) +
+  geom_rect(aes(xmin=timestamp,xmax=lead(timestamp),ymin=0,ymax=disk_usage), fill=disk_usage_color, color=disk_usage_color, alpha=1) +
+  geom_rect(aes(xmin=timestamp,xmax=lead(timestamp),ymin=0,ymax=memory_usage), fill=memory_usage_color, color=memory_usage_color, alpha=1) +
   geom_step(aes(y=memory_usage), color=memory_usage_color) +
+  geom_step(aes(y=ufo_0_memory_usage), color=ufo_0_memory_usage_color, size=0.75) + #linetype = "dotted",
+  geom_step(aes(y=ufo_1_memory_usage), color=ufo_1_memory_usage_color, size=0.75) +
   geom_step(aes(y=disk_usage), color=disk_usage_color, size=1) +
-  geom_step(aes(y=ufo_0_memory_usage), color=ufo_0_memory_usage_color, linetype = "longdash", size=1) +
-  geom_step(aes(y=ufo_1_memory_usage), color=ufo_1_memory_usage_color, linetype = "longdash", size=1) +
+  
   # UFO sizes
-  #geom_step(aes(y=intended_memory_usage), color=ufo_perceived_color, size=1) +
   geom_step(aes(y=apparent_memory_usage), color=ufo_actual_color, size=0.5, linetype = "dashed") +
   # Threshods
   geom_hline(yintercept=parameters$high_water_mark, color=high_watermark_color, linetype = "dashed") +
-  geom_text(aes(y=parameters$high_water_mark, x=unique(min(timestamp))+offset, label="high watermark"), color=high_watermark_color, text=element_text(size=10), vjust=-0.25, hjust=0, check_overlap = TRUE) +
+  geom_text(aes(y=parameters$high_water_mark, x=unique(min(timestamp))+offset, label="high watermark"), color=high_watermark_color, vjust=-0.75, hjust=0, check_overlap = TRUE) +
   geom_hline(yintercept=parameters$low_water_mark, color=low_watermark_color, linetype = "dashed") +
-  geom_text(aes(y=parameters$low_water_mark, x=unique(min(timestamp))+offset, label="low watermark"), color=low_watermark_color, text=element_text(size=10), vjust=-0.25, hjust=0, check_overlap = TRUE) +
-  geom_text(aes(y=unique(apparent_memory_usage[apparent_memory_usage != 0])[1], x=data %>%filter(apparent_memory_usage == unique(apparent_memory_usage[apparent_memory_usage != 0])[1]) %>% pull(timestamp) %>% min + offset, label="ufo::new"), text=element_text(size=10), vjust=-0.25, hjust=0, check_overlap = TRUE) +
-  geom_text(aes(y=unique(apparent_memory_usage[apparent_memory_usage != 0])[2], x=data %>%filter(apparent_memory_usage == unique(apparent_memory_usage[apparent_memory_usage != 0])[2]) %>% pull(timestamp) %>% min + offset, label="ufo::new"), text=element_text(size=10), vjust=-0.25, hjust=0, check_overlap = TRUE) +
-  geom_text(aes(y=max(disk_usage), x=offset, label="disk usage"), text=element_text(size=10), vjust=-0.25, hjust=-1) +
+  geom_text(aes(y=parameters$low_water_mark, x=unique(min(timestamp))+offset, label="low watermark"), color=low_watermark_color, vjust=-0.75, hjust=0, check_overlap = TRUE) +
+
+  geom_text(aes(y=ufo_0_created_y, x=ufo_0_created_x + offset, label=paste0("ufo::new(", label_number_si()(parameters$size / 1), " * int64)")), vjust=-0.75, hjust=0, check_overlap = TRUE) +
+  geom_text(aes(y=ufo_1_created_y, x=ufo_1_created_x + offset, label=paste0("ufo::new(", label_number_si()(parameters$size / 2), " * int64)")), vjust=-0.75, hjust=0, check_overlap = TRUE) +
+
+  geom_text(aes(y=max(unique(data$apparent_memory_usage)), x=max(unique(timestamp)) - offset, label="perceived memory usage"), vjust=-0.5, hjust=1, check_overlap = TRUE) +  
+  geom_text(aes(y=max(unique(data$disk_usage)), x=max(unique(timestamp)) - offset, label=paste0("total disk usage"), fontface="bold"), color=disk_usage_color, vjust=-0.75, hjust=1, check_overlap = TRUE) +
+  geom_text(aes(y=max(unique(data$memory_usage)), x=max(unique(timestamp)) - offset, label=paste0("total memory usage"), fontface="bold"), color=memory_usage_color, vjust=-0.75, hjust=1, check_overlap = TRUE) +
+  
+  #geom_text(aes(y=0, x=data %>% filter(ufo_0_memory_usage > 0) %>% pull(timestamp) %>% min + 2 * offset, label="ufo 1 memory usage"), color=ufo_0_memory_usage_color, vjust=-0.5, hjust=0, check_overlap = TRUE) +
+  #geom_text(aes(y=0, x=data %>% filter(ufo_1_memory_usage > 0) %>% pull(timestamp) %>% min + 2 * offset, label="ufo 2 memory usage"), color=ufo_1_memory_usage_color, vjust=-0.5, hjust=0, check_overlap = TRUE) +
+  
+  geom_text(aes(y=0, x=max(unique(timestamp)) - offset, label="ufo 1 memory usage"), color=ufo_0_memory_usage_color,  vjust=-2.5, hjust=1, check_overlap = TRUE) +  
+  geom_text(aes(y=0, x=max(unique(timestamp)) - offset, label="ufo 2 memory usage"), color=ufo_1_memory_usage_color,  vjust=-0.75, hjust=1, check_overlap = TRUE) +  
+  
   # Theming
-  guides(color = guide_legend(title="XXX")) +
+  #guides(color = guide_legend(title="XXX")) +
   theme_linedraw() + 
   scale_y_continuous(labels = function(x) humanReadable(x, standard = "IEC", sep = ""),  expand = expansion(mult = c(0, .05))) + # breaks=memory_breaks(20), 
-  scale_x_continuous(labels = function(x) paste0(floor(x / 1000 / 1000), "ms"), expand=c(0,0)) +
+  scale_x_continuous(labels = function(x) paste0(floor(x / 1000 / 1000), "ms"), expand = expansion(mult = c(.005, 0))) +
   theme(axis.title.y = element_blank()) +
   scale_color_manual(values = colors) +
   xlab("elapsed time")
 
 ggsave(plot=p, filename="membench.pdf", width=20, height=10, dpi = "print")
+ggsave(plot=p, filename="membench.png", width=20, height=10, dpi = "print")
+ggsave(plot=p, filename="membench.svg", device="svg", width=20, height=10, dpi = "print")
 
 p
 ```

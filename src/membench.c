@@ -433,6 +433,7 @@ int main(int argc, char **argv) {
     size_t last_write = 0;
     size_t n = (config.sample_size == 0 ? config.size : config.sample_size);  
     for (size_t j = 0; j < config.ufos; j++) {
+        INFO("Allocating %li-th UFO\n", j);
         ufos[j] = seq_new(&ufo_system, 0, config.size / (j + 1), 1, config.writes == 0, config.min_load);
         for (size_t i = 0; i < n / (j + 1); i++) {        
             // INFO("UFO %li <- %li/%li\n", ufo, i, n);
@@ -443,12 +444,13 @@ int main(int argc, char **argv) {
                 sum += ufos[j][i];
             }
             if (i == n / 2 && j > 0) {
+                INFO("Freeing %li-th UFO\n", i);
                 seq_free(&ufo_system, ufos[j]);
             }
         }
     }
 
-    INFO("Freeing %li UFOs\n", config.ufos);
+    INFO("Freeing %li-th UFO\n", config.ufos - 1);
     //for (size_t i = 0; i < config.ufos; i++) {
     seq_free(&ufo_system, ufos[config.ufos - 1]);
     //}
